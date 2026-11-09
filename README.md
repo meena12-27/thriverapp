@@ -1,41 +1,111 @@
 # Thriver
 
-An AI-powered smart parking optimization platform that helps drivers find the best parking space while reducing congestion inside malls.
+**Smart parking for malls.** Thriver shows a driver which parking slot to take, explains why, warns when a floor is about to fill up, and lets them hold the slot for a few minutes. Operators get a live dashboard.
 
----
+> **Live demo:** LIVE_URL_HERE &nbsp;|&nbsp; **Demo video:** VIDEO_URL_HERE &nbsp;|&nbsp; **API docs:** `API_URL_HERE/docs`
+>
+> The backend runs on a free tier and sleeps when idle, so the first load can take 30 to 60 seconds.
 
-## Tech Stack
+| | |
+|---|---|
+| ![Home](docs/screenshots/01-home.png) | ![Recommendation](docs/screenshots/02-recommendation.png) |
+| ![Forecast](docs/screenshots/03-forecast.png) | ![Admin dashboard](docs/screenshots/05-admin.png) |
 
-### Frontend
-- Flutter
+## What it does
 
-### Backend
-- Python
-- FastAPI
+- **Recommends a slot and says why.** Every free slot is scored on walking distance from the chosen entrance, how busy its floor is (or is about to be), and an optional preferred floor. Accessible and EV-charging needs are hard filters, not score tweaks. The response includes human-readable reasons.
+- **Forecasts floor occupancy.** For each floor: occupancy now, +15 and +30 minutes, an estimated "full in N min", a trend and a confidence level.
+- **Reserves a slot for 5 minutes.** Reservations expire lazily (no scheduler), and the live map shows reserved slots separately.
+- **Admin dashboard.** Occupancy by floor, predicted occupancy, and a live activity feed.
+- **Accounts.** JWT auth, guest mode, per-user recommendation history.
+- **Sensor simulator.** Generates realistic traffic, including a "rush" mode, so the live behaviour can be demonstrated without hardware.
 
-### Database
-- PostgreSQL
+## How the forecast works (and what it is not)
 
-### Simulator
-- Python
+The forecast is **trend extrapolation, not a trained machine-learning model.** It reads the last 30 minutes of the `slot_activity` event log, counts slots that became taken minus slots that became free, and turns that into a net fill rate per floor. It then projects the current occupancy forward and clamps it to the floor's capacity.
 
-### Deployment
-- Docker, Render, Netlify
+It knows nothing about time of day, weekends or events, and it assumes the recent trend continues. With fewer than 3 recent events it reports `unknown` instead of extrapolating noise. A real model would learn weekly patterns from weeks of history; this uses minutes. The recommendation engine consumes the forecast, so a floor that is filling quickly is penalised before it is full.
 
-### Future
-- Redis
+Code: [`forecast_service.py`](backend/app/services/forecast_service.py), [`recommendation_service.py`](backend/app/services/recommendation_service.py). Both are pure functions with unit tests.
 
----
+## Architecture
 
-## Project Structure
+```mermaid
+flowchart LR
+    Driver([Driver]) --> App["Flutter app<br/>(web / Android)"]
+    Admin([Operator]) --> Dash["Admin dashboard<br/>(HTML + JS)"]
+    App -->|REST + JWT| API
+    Dash -->|REST + JWT| API
 
-backend/
-mobile/
-simulator/
-docs/
-diagrams/
-scripts/
-tests/
+    subgraph Backend["FastAPI backend"]
+        API["Routes<br/>auth, parking, reservations, admin"]
+        API --> Rec["Recommendation service<br/>weighted score, hard filters"]
+        API --> Fc["Forecast service<br/>recent-trend extrapolation"]
+        API --> Res["Reservation service<br/>5-min hold, lazy expiry"]
+        Rec --> Fc
+    end
+
+    API --> DB[("PostgreSQL<br/>malls, slots, users, reservations,<br/>history, slot_activity")]
+    Sim["Sensor simulator<br/>(Python)"] -->|slot changes + events| DB
+    Fc -.->|reads recent events| DB
+```
+
+## Tech stack
+
+| Layer | Choice |
+|---|---|
+| App | Flutter (web and Android) |
+| API | Python, FastAPI, Pydantic v2 |
+| Data | PostgreSQL, SQLAlchemy 2.0 |
+| Auth | JWT (python-jose), bcrypt |
+| Simulator | Python |
+| Delivery | Docker, docker-compose, Render, Netlify |
+
+## API overview
+
+Interactive docs are served at `/docs`. Endpoints marked "optional" work without a token but personalise or log history when one is sent.
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| POST | `/auth/register` | none | Create an account (`admin_secret` makes an admin) |
+| POST | `/auth/login` | none | Returns a bearer token (form fields, `username` is the email) |
+| GET | `/auth/me` | required | Current profile |
+| GET | `/malls` | none | List malls |
+| GET | `/parking/available?mall_id=` | none | Free slots |
+| GET | `/parking/map?mall_id=` | none | Every slot with status and coordinates |
+| GET | `/parking/recommend` | optional | Best slot plus `reasons`. Params: `mall_id`, `entrance_x`, `entrance_y`, `preferred_floor`, `requires_accessible`, `requires_ev_charging` |
+| GET | `/parking/forecast?mall_id=` | none | Per-floor outlook |
+| GET | `/parking/history` | required | The user's past recommendations |
+| POST | `/reservations` | required | Hold a slot for 5 minutes |
+| GET | `/reservations/active` | required | Current hold, with seconds remaining |
+| POST | `/reservations/{id}/release` | required | Release a hold early |
+| GET | `/admin/stats` | admin | Occupancy by floor and zone |
+| GET | `/admin/activity` | admin | Recent slot events |
+| GET | `/health` | none | Liveness probe |
+
+## Engineering notes
+
+Things that went wrong and what they taught me:
+
+- **Timezone bug on PostgreSQL.** Reservation countdowns read about 20,000 seconds instead of 300 when the database session was in IST. Naive `DateTime` columns were being interpreted in local time. Fix: timezone-aware columns, verified in IST, UTC and Los Angeles sessions. SQLite had hidden it.
+- **Foreign keys differ by database.** Re-seeding worked on SQLite and failed on PostgreSQL because SQLite does not enforce them. Found by running the same tests on both.
+- **Stale UI state across malls.** A slot popup survived switching malls. Fixed with request-id guards on async loads and a render-time check on the slot's mall.
+- **Production safety.** With `ENV=production` the API refuses to boot with default secrets or `ALLOWED_ORIGINS=*`.
+- **Lazy reservation expiry.** No background scheduler to run or monitor: stale holds are released when the next request touches them.
+
+## Tests
+
+```
+cd backend
+python -m tests.test_recommendation
+python -m tests.test_forecast
+```
+
+Pure unit tests, no database or server needed. Scoring, filters, tie stability, forecast maths, clamping, the "unknown" threshold and the recommendation changing when a floor is predicted to fill.
+
+## Roadmap
+
+Real sensor integration, a model trained on weeks of history (seasonality), push notifications, Redis for rate limiting and caching.
 
 ---
 
