@@ -173,6 +173,18 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadForecast();
   }
 
+  /// The tapped slot, re-read from the latest map data. selectedSlot is a
+  /// snapshot taken at tap time, so without this the detail card keeps saying
+  /// "Available" after the slot has been reserved or taken.
+  ParkingSlot? get _liveSelectedSlot {
+    final tapped = selectedSlot;
+    if (tapped == null) return null;
+    for (final slot in parkingMap) {
+      if (slot.id == tapped.id) return slot;
+    }
+    return tapped;
+  }
+
   void _onReserve() async {
     if (selectedSlot == null) return;
 
@@ -366,12 +378,12 @@ class _HomeScreenState extends State<HomeScreen> {
             selectedFloor: selectedFloor,
             showAvailableOnly: showAvailableOnly,
             recommendation: recommendation,
-            selectedSlot: selectedSlot,
+            selectedSlot: _liveSelectedSlot,
             onSlotTapped: (slot) => setState(() => selectedSlot = slot),
           ),
           const SizedBox(height: 20),
           if (selectedSlot != null && selectedSlot!.mallId == selectedMallId)
-            SelectedSlotCard(slot: selectedSlot!, onReserve: _onReserve),
+            SelectedSlotCard(slot: _liveSelectedSlot!, onReserve: _onReserve),
           if (rec != null) NavigationCard(steps: rec.navigation),
           const SizedBox(height: 20),
           ElevatedButton.icon(

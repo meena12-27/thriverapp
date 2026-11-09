@@ -343,10 +343,18 @@ class SelectedSlotCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              slot.isAvailable ? "🟢 Available" : "🔴 Occupied",
+              slot.isAvailable
+                  ? "🟢 Available"
+                  : slot.status == "reserved"
+                      ? "🟠 Reserved"
+                      : "🔴 Occupied",
               style: TextStyle(
                 fontSize: 17,
-                color: slot.isAvailable ? Colors.green : Colors.red,
+                color: slot.isAvailable
+                    ? Colors.green
+                    : slot.status == "reserved"
+                        ? Colors.orange.shade800
+                        : Colors.red,
                 fontWeight: FontWeight.bold,
               ),
             ),
