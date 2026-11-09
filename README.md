@@ -2,7 +2,7 @@
 
 **Smart parking for malls.** Thriver shows a driver which parking slot to take, explains why, warns when a floor is about to fill up, and lets them hold the slot for a few minutes. Operators get a live dashboard.
 
-> **Live demo:** LIVE_URL_HERE &nbsp;|&nbsp; **Demo video:** VIDEO_URL_HERE &nbsp;|&nbsp; **API docs:** `API_URL_HERE/docs`
+> **Live demo:** https://startling-paletas-2363bf.netlify.app &nbsp;|&nbsp; **Demo video:** VIDEO_URL_HERE &nbsp;|&nbsp; **API docs:** `https://thriver-api-9p0c.onrender.com/docs`
 >
 > The backend runs on a free tier and sleeps when idle, so the first load can take 30 to 60 seconds.
 | | |
