@@ -5,12 +5,11 @@
 > **Live demo:** LIVE_URL_HERE &nbsp;|&nbsp; **Demo video:** VIDEO_URL_HERE &nbsp;|&nbsp; **API docs:** `API_URL_HERE/docs`
 >
 > The backend runs on a free tier and sleeps when idle, so the first load can take 30 to 60 seconds.
-
 | | |
 |---|---|
 | ![Home](docs/screenshots/01-home.png) | ![Recommendation](docs/screenshots/02-recommendation.png) |
-| ![Forecast](docs/screenshots/03-forecast.png) | ![Admin dashboard](docs/screenshots/05-admin.png) |
-
+| ![Forecast](docs/screenshots/03-forecast.png) | ![Reservation](docs/screenshots/04-reservation.png) |
+| ![Map](docs/screenshots/06-map.png) | ![Admin dashboard](docs/screenshots/05-admin.png) |
 ## What it does
 
 - **Recommends a slot and says why.** Every free slot is scored on walking distance from the chosen entrance, how busy its floor is (or is about to be), and an optional preferred floor. Accessible and EV-charging needs are hard filters, not score tweaks. The response includes human-readable reasons.
