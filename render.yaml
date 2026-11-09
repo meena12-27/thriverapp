@@ -1,0 +1,30 @@
+# Render Blueprint: New > Blueprint > pick this repo. Creates the database and
+# the API together and wires them up. Free plans sleep after inactivity.
+databases:
+  - name: thriver-db
+    plan: free
+    databaseName: thriver_db
+    user: thriver
+
+services:
+  - type: web
+    name: thriver-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: thriver-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_SIGNUP_SECRET
+        generateValue: true
+      # Set this to your deployed web app origin, e.g. https://thriver.netlify.app
+      - key: ALLOWED_ORIGINS
+        sync: false

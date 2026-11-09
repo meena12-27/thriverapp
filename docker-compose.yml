@@ -1,0 +1,34 @@
+# Whole backend stack with one command:  docker compose up --build
+# API:   http://localhost:8000   (docs at /docs, dashboard at /admin-dashboard/)
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: thriver
+      POSTGRES_PASSWORD: thriver
+      POSTGRES_DB: thriver_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U thriver -d thriver_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://thriver:thriver@db:5432/thriver_db
+      ENV: development
+      SECRET_KEY: local-compose-secret-not-for-production
+      ALLOWED_ORIGINS: "*"
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:

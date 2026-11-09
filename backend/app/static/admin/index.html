@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Thriver — Admin Dashboard</title>
+<style>
+  :root {
+    --blue: #2563eb;
+    --green: #16a34a;
+    --orange: #ea580c;
+    --red: #dc2626;
+    --bg: #f5f7fb;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --muted: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    background: var(--blue);
+    color: white;
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header h1 { margin: 0; font-size: 20px; }
+  header .sub { font-size: 13px; opacity: 0.85; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+  #login-panel, #dashboard { display: none; }
+  #login-panel.active, #dashboard.active { display: block; }
+
+  .login-card {
+    max-width: 360px;
+    margin: 60px auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+  }
+  .login-card h2 { margin-top: 0; font-size: 18px; }
+  .login-card input {
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  .login-card button, .toolbar button {
+    width: 100%;
+    padding: 10px;
+    background: var(--blue);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .login-card button:hover, .toolbar button:hover { opacity: 0.9; }
+  #login-error { color: var(--red); font-size: 13px; margin-top: 8px; min-height: 16px; }
+
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .toolbar select {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .toolbar button { width: auto; padding: 8px 16px; }
+  .toolbar .logout { background: var(--muted); }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .stat-card .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .stat-card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .stat-card.available .value { color: var(--green); }
+  .stat-card.occupied .value { color: var(--red); }
+  .stat-card.reserved .value { color: var(--orange); }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .panel h3 { margin-top: 0; font-size: 15px; }
+
+  .bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 13px; }
+  .bar-row .bar-label { width: 90px; flex-shrink: 0; color: var(--muted); }
+  .bar-track { flex: 1; background: #eef1f6; border-radius: 6px; height: 18px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--blue); border-radius: 6px; transition: width 0.3s ease; }
+  .bar-pct { width: 46px; text-align: right; flex-shrink: 0; color: var(--muted); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  .badge { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge.available { background: #dcfce7; color: var(--green); }
+  .badge.occupied { background: #fee2e2; color: var(--red); }
+  .badge.reserved { background: #ffedd5; color: var(--orange); }
+  .badge.filling { background: #ffedd5; color: var(--orange); }
+  .badge.steady, .badge.emptying { background: #dcfce7; color: var(--green); }
+  .badge.unknown { background: #e2e8f0; color: var(--muted); }
+  .badge.full { background: #fee2e2; color: var(--red); }
+  .note { color: var(--muted); font-size: 12px; margin: -6px 0 12px; }
+
+  #error-banner {
+    display: none;
+    background: #fee2e2;
+    color: var(--red);
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🚗 Thriver — Admin Dashboard</h1>
+    <div class="sub">Occupancy &amp; activity, per mall</div>
+  </div>
+  <div class="sub" id="whoami"></div>
+</header>
+
+<main>
+  <div id="login-panel" class="active">
+    <div class="login-card">
+      <h2>Admin sign in</h2>
+      <input id="login-email" type="email" placeholder="Email" autocomplete="username" />
+      <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" />
+      <button onclick="login()">Sign in</button>
+      <div id="login-error"></div>
+    </div>
+  </div>
+
+  <div id="dashboard">
+    <div id="error-banner"></div>
+
+    <div class="toolbar">
+      <select id="mall-select" onchange="loadAll()"></select>
+      <button onclick="loadAll()">Refresh</button>
+      <button class="logout" onclick="logout()">Log out</button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">Total Slots</div><div class="value" id="stat-total">—</div></div>
+      <div class="stat-card available"><div class="label">Available</div><div class="value" id="stat-available">—</div></div>
+      <div class="stat-card occupied"><div class="label">Occupied</div><div class="value" id="stat-occupied">—</div></div>
+      <div class="stat-card reserved"><div class="label">Reserved</div><div class="value" id="stat-reserved">—</div></div>
+      <div class="stat-card"><div class="label">Occupancy</div><div class="value" id="stat-occupancy">—</div></div>
+      <div class="stat-card"><div class="label">Busiest Zone</div><div class="value" id="stat-busiest">—</div></div>
+    </div>
+
+    <div class="panel">
+      <h3>Predicted Occupancy</h3>
+      <div class="note" id="forecast-note">Trend extrapolated from recent slot activity. An estimate, not a trained model.</div>
+      <table>
+        <thead>
+          <tr><th>Floor</th><th>Now</th><th>+15 min</th><th>+30 min</th><th>Outlook</th><th>Confidence</th></tr>
+        </thead>
+        <tbody id="forecast-body"></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h3>Occupancy by Floor</h3>
+      <div id="floor-bars"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Occupancy by Zone</h3>
+      <div id="zone-bars"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Recent Activity</h3>
+      <table>
+        <thead>
+          <tr><th>Slot</th><th>Floor</th><th>Zone</th><th>Change</th><th>Source</th><th>When</th></tr>
+        </thead>
+        <tbody id="activity-body"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+  const BASE = ''; // served same-origin by the FastAPI app itself
+
+  let token = sessionStorage.getItem('thriver_admin_token') || null;
+  let malls = [];
+
+  function showError(msg) {
+    const el = document.getElementById('error-banner');
+    if (!msg) { el.style.display = 'none'; return; }
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  async function api(path, options = {}) {
+    const res = await fetch(BASE + path, {
+      ...options,
+      headers: { ...(options.headers || {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    });
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(res.status === 403 ? 'This account is not an admin.' : 'Session expired, please log in again.');
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.detail || `Request failed (${res.status})`);
+    }
+    return res.json();
+  }
+
+  async function login() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errorEl = document.getElementById('login-error');
+    errorEl.textContent = '';
+
+    try {
+      const res = await fetch(BASE + '/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ username: email, password }),
+      });
+      if (!res.ok) throw new Error('Incorrect email or password');
+      const data = await res.json();
+      token = data.access_token;
+      sessionStorage.setItem('thriver_admin_token', token);
+      await enterDashboard();
+    } catch (e) {
+      errorEl.textContent = e.message;
+    }
+  }
+
+  function logout() {
+    token = null;
+    sessionStorage.removeItem('thriver_admin_token');
+    document.getElementById('dashboard').classList.remove('active');
+    document.getElementById('login-panel').classList.add('active');
+  }
+
+  async function enterDashboard() {
+    try {
+      const me = await api('/auth/me');
+      if (!me.is_admin) {
+        document.getElementById('login-error').textContent = 'This account is not an admin.';
+        logout();
+        return;
+      }
+      document.getElementById('whoami').textContent = me.email;
+      document.getElementById('login-panel').classList.remove('active');
+      document.getElementById('dashboard').classList.add('active');
+      malls = await api('/malls');
+      const select = document.getElementById('mall-select');
+      select.innerHTML = malls.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+      await loadAll();
+    } catch (e) {
+      document.getElementById('login-error').textContent = e.message;
+      logout();
+    }
+  }
+
+  function renderBars(containerId, rows, keyLabel) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = rows.map(r => `
+      <div class="bar-row">
+        <div class="bar-label">${keyLabel === 'floor' ? 'Floor ' + r.floor : r.zone}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${r.occupancy_percent}%"></div></div>
+        <div class="bar-pct">${r.occupancy_percent}%</div>
+      </div>
+    `).join('') || '<div style="color:#64748b;font-size:13px;">No data yet.</div>';
+  }
+
+  function statusBadge(status) {
+    return `<span class="badge ${status}">${status}</span>`;
+  }
+
+  async function loadAll() {
+    showError(null);
+    const mallId = document.getElementById('mall-select').value;
+    if (!mallId) return;
+
+    try {
+      const [stats, activity, forecast] = await Promise.all([
+        api(`/admin/stats?mall_id=${mallId}`),
+        api(`/admin/activity?mall_id=${mallId}&limit=20`),
+        api(`/parking/forecast?mall_id=${mallId}`),
+      ]);
+
+      document.getElementById('stat-total').textContent = stats.total_slots;
+      document.getElementById('stat-available').textContent = stats.available;
+      document.getElementById('stat-occupied').textContent = stats.occupied;
+      document.getElementById('stat-reserved').textContent = stats.reserved;
+      document.getElementById('stat-occupancy').textContent = stats.occupancy_percent + '%';
+      document.getElementById('stat-busiest').textContent = stats.busiest_zone || '—';
+
+      renderBars('floor-bars', stats.by_floor, 'floor');
+      renderBars('zone-bars', stats.by_zone, 'zone');
+
+      document.getElementById('forecast-note').textContent =
+        `Trend over the last ${forecast.lookback_minutes} min of slot activity (${forecast.method}). An estimate, not a trained model.`;
+      document.getElementById('forecast-body').innerHTML = forecast.floors.map(f => {
+        let outlook;
+        if (f.minutes_to_full === 0) outlook = '<span class="badge full">full</span>';
+        else if (f.trend === 'filling' && f.minutes_to_full !== null) outlook = `<span class="badge filling">filling</span> full in ~${f.minutes_to_full} min`;
+        else if (f.trend === 'unknown') outlook = '<span class="badge unknown">not enough recent activity</span>';
+        else outlook = `<span class="badge ${f.trend}">${f.trend}</span>`;
+        const predicted = f.trend === 'unknown' ? '—' : null;
+        return `<tr>
+          <td>Floor ${f.floor}</td>
+          <td>${f.occupancy_now}% (${f.taken_now}/${f.total_slots})</td>
+          <td>${predicted ?? f.predicted_15m + '%'}</td>
+          <td>${predicted ?? f.predicted_30m + '%'}</td>
+          <td>${outlook}</td>
+          <td>${f.confidence} (${f.events_used} events)</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="6" style="color:#64748b;">No floors.</td></tr>';
+
+      const tbody = document.getElementById('activity-body');
+      tbody.innerHTML = activity.map(a => `
+        <tr>
+          <td>${a.slot_number}</td>
+          <td>${a.floor}</td>
+          <td>${a.zone}</td>
+          <td>${statusBadge(a.previous_status)} → ${statusBadge(a.new_status)}</td>
+          <td>${a.source === 'backfill' ? 'backfill (synthetic demo data)' : a.source}</td>
+          <td>${new Date(a.created_at).toLocaleTimeString()}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="6" style="color:#64748b;">No activity yet.</td></tr>';
+    } catch (e) {
+      showError(e.message);
+    }
+  }
+
+  // Auto-refresh every 10s, matching the simulator's tick rate.
+  setInterval(() => {
+    if (document.getElementById('dashboard').classList.contains('active')) loadAll();
+  }, 10000);
+
+  // Resume session if a token is already stored.
+  if (token) enterDashboard();
+</script>
+</body>
+</html>
