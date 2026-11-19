@@ -231,3 +231,6 @@ or a deployed API).
   URL via `--dart-define`). The auth token is held in memory only for now —
   see the comment in `services/auth_service.dart` for the tradeoff and how
   to swap in persistent storage later.
+
+
+  I built this project with an AI assistant. I ran and deployed it myself (Render and Netlify) and studied how the scoring, forecast, reservation and auth logic work.
