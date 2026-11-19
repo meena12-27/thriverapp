@@ -37,7 +37,7 @@ def get_available_slots(
         .filter(
             ParkingSlot.status == "available",
             ParkingSlot.mall_id == mall_id,
-        )
+        ).order_by(ParkingSlot.id)
         .all()
     )
 
@@ -64,7 +64,7 @@ def recommend_slot(
     """
     expire_stale_reservations(db)
 
-    all_slots = db.query(ParkingSlot).filter(ParkingSlot.mall_id == mall_id).all()
+    all_slots = db.query(ParkingSlot).filter(ParkingSlot.mall_id == mall_id).order_by(ParkingSlot.id).all()
     forecasts = get_mall_forecasts(db, mall_id)
 
     best = recommend(
